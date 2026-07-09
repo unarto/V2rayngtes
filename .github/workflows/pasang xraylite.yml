@@ -33,4 +33,4 @@ jobs:
           # Push perubahan ke repo utama
           git add .
           git commit -m "🤖 Bot: Sukses pasang submodule androidlibxraylite secara otomatis"
-          git push origin main
+          git push origin master
