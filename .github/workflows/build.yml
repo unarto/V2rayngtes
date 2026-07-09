@@ -1,31 +1,25 @@
-name: Build & Auto Release APK
+name: Build APK
 
 on:
   workflow_dispatch:
+    inputs:
+      release_tag:
+        required: false
+        type: string
   push:
     branches:
       - master
 
-permissions:
-  contents: write
-
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: #
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         submodules: 'recursive'
         fetch-depth: '0'
-
-    - name: Setup Java
-      uses: actions/setup-java@v4
-      with:
-        distribution: 'temurin'
-        java-version: '21'
-        cache: 'gradle'
 
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3.2.0
@@ -36,66 +30,14 @@ jobs:
 
     - name: Install NDK
       run: |
-        echo "y" | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --channel=0 --install "ndk;28.2.13676358"
+        echo "y" | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager \
+          --channel=0 \
+          --install "ndk;28.2.13676358"
         echo "NDK_HOME=$ANDROID_HOME/ndk/28.2.13676358" >> $GITHUB_ENV
-        echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/28.2.13676358" >> $GITHUB_ENV
+        sed -i '10i\
+        \
+            ndkVersion = "28.2.13676358"' ${{ github.workspace }}/V2rayNG/app/build.gradle.kts
 
-    # --- SETUP GO UNTUK BUILD AAR ---
-    - name: Setup Golang
-      uses: actions/setup-go@v6.1.0
-      with:
-        go-version-file: 'Androidlibxraylitev26.1.23/go.mod'
-
-    - name: Install & Setup Gomobile
-      run: |
-        go install golang.org/x/mobile/cmd/gomobile@latest
-        echo "$HOME/go/bin" >> $GITHUB_PATH
-
-    - name: Setup Build Essentials
-      run: sudo apt-get update && sudo apt-get install -y build-essential
-
-    # --- BAGIAN OTOMATISASI JAR ---
-    - name: Fix Gradle Wrapper (Otomatis tiap Build)
-      run: |
-        echo "--- Memastikan Gradle Wrapper selalu fresh ---"
-        cd ${{ github.workspace }}/V2rayNG
-        rm -rf gradle/wrapper/gradle-wrapper.jar
-        gradle wrapper --gradle-version 9.3.1
-    # ------------------------------
-
-    # --- BAGIAN 1: CACHE & COMPILE LIBV2RAY (AAR) ---
-    - name: Restore cached libv2ray
-      id: cache-libv2ray-restore
-      uses: actions/cache/restore@v4
-      with:
-        path: ${{ github.workspace }}/v2ray_aar_bin
-        key: libv2ray-${{ runner.os }}-${{ hashFiles('Androidlibxraylitev26.1.23/go.mod') }}-${{ hashFiles('Androidlibxraylitev26.1.23/gen_assets.sh') }}
-
-    - name: Build libv2ray.aar (Local Repo)
-      if: steps.cache-libv2ray-restore.outputs.cache-hit != 'true'
-      run: |
-        gomobile init
-        cd Androidlibxraylitev26.1.23
-        mkdir -p assets data
-        bash gen_assets.sh download
-        cp -v data/*.dat assets/
-        go mod tidy
-        mkdir -p ../v2ray_aar_bin
-        gomobile bind -v -androidapi 24 -trimpath -ldflags='-s -w -buildid=' -o ../v2ray_aar_bin/libv2ray.aar ./
-
-    - name: Save libv2ray
-      if: steps.cache-libv2ray-restore.outputs.cache-hit != 'true'
-      uses: actions/cache/save@v4
-      with:
-        path: ${{ github.workspace }}/v2ray_aar_bin
-        key: libv2ray-${{ runner.os }}-${{ hashFiles('Androidlibxraylitev26.1.23/go.mod') }}-${{ hashFiles('Androidlibxraylitev26.1.23/gen_assets.sh') }}
-
-    - name: Copy libv2ray to App Folder
-      run: |
-        mkdir -p ${{ github.workspace }}/V2rayNG/app/libs/
-        cp ${{ github.workspace }}/v2ray_aar_bin/libv2ray.aar ${{ github.workspace }}/V2rayNG/app/libs/
-
-    # --- BAGIAN 2: CACHE & COMPILE LIBHEVTUN ---
     - name: Restore cached libhevtun
       id: cache-libhevtun-restore
       uses: actions/cache/restore@v4
@@ -105,16 +47,9 @@ jobs:
 
     - name: Build libhevtun
       if: steps.cache-libhevtun-restore.outputs.cache-hit != 'true'
-      env:
-        NDK_HOME: /usr/local/lib/android/sdk/ndk/28.2.13676358
       run: |
-        if [ ! -d "hev-socks5-tunnel" ]; then
-          echo "Error: Folder hev-socks5-tunnel tidak ditemukan!"
-          exit 1
-        fi
-        chmod +x compile-hevtun.sh
         bash compile-hevtun.sh
-
+    
     - name: Save libhevtun
       if: steps.cache-libhevtun-restore.outputs.cache-hit != 'true'
       uses: actions/cache/save@v4
@@ -122,74 +57,74 @@ jobs:
         path: ${{ github.workspace }}/libs
         key: libhevtun-${{ runner.os }}-${{ env.NDK_HOME }}-${{ hashFiles('.git/modules/hev-socks5-tunnel/HEAD') }}-${{ hashFiles('compile-hevtun.sh') }}
 
-    - name: Sync Libs to App Folder
+    - name: Copy libhevtun
       run: |
-        mkdir -p ${{ github.workspace }}/V2rayNG/app/libs
-        if [ -d "libs" ]; then
-          cp -r libs/* ${{ github.workspace }}/V2rayNG/app/libs/
-        fi
+        cp -r ${{ github.workspace }}/libs ${{ github.workspace }}/V2rayNG/app
 
-    - name: Decode debug keystore
+    - name: Fetch AndroidLibXrayLite tag
       run: |
-        cd ${{ github.workspace }}/V2rayNG
-        if [ -f debug.keystore.base64 ]; then
-          base64 -d debug.keystore.base64 > debug.keystore
-        fi
+        pushd AndroidLibXrayLite
+        CURRENT_TAG=$(git describe --tags --abbrev=0)
+        echo "Current tag in this repo: $CURRENT_TAG"
+        echo "CURRENT_TAG=$CURRENT_TAG" >> $GITHUB_ENV
+        popd
 
-    # --- BAGIAN 3: BUILD APK (BUNUH LINT VITAL TOTAL) ---
+    - name: Download libv2ray
+      uses: robinraju/release-downloader@v1.12
+      with:
+        repository: '2dust/AndroidLibXrayLite'
+        tag: "v26.1.23" #
+        fileName: 'libv2ray.aar'
+        out-file-path: V2rayNG/app/libs/
+
+    - name: Setup Java
+      uses: actions/setup-java@v5
+      with:
+        distribution: 'temurin'
+        java-version: '21'
+
+    - name: Decode Keystore
+      uses: timheuer/base64-to-file@v1.2.4
+      id: android_keystore
+      with:
+        fileName: "android_keystore.jks"
+        encodedString: ${{ secrets.APP_KEYSTORE_BASE64 }}
+
     - name: Build APK
       run: |
         cd ${{ github.workspace }}/V2rayNG
         echo "sdk.dir=${ANDROID_HOME}" > local.properties
-        chmod +x gradlew
-        # Ditambahkan parameter pembunuh lint vital release biar gak rewel
-        ./gradlew assembleRelease -x lint -Pandroid.lint.options.checkReleaseBuilds=false -Pandroid.lint.options.abortOnError=false
-
-    # --- BAGIAN 4: UPLOAD ARTIFACTS PER ARSITEKTUR ---
+        chmod 755 gradlew
+        ./gradlew licenseFdroidReleaseReport
+        # JALUR AMAN: skips Android Lint check (-x lint)
+        ./gradlew assembleRelease -x lint -Pandroid.injected.signing.store.file=${{ steps.android_keystore.outputs.filePath }} -Pandroid.injected.signing.store.password=${{ secrets.APP_KEYSTORE_PASSWORD }} -Pandroid.injected.signing.key.alias=${{ secrets.APP_KEYSTORE_ALIAS }} -Pandroid.injected.signing.key.password=${{ secrets.APP_KEY_PASSWORD }}
+    
     - name: Upload arm64-v8a APK
-      uses: actions/upload-artifact@v4
-      if: success()
+      uses: actions/upload-artifact@v6
+      if: ${{  success() }}
       with:
         name: arm64-v8a
-        path: "**/build/outputs/apk/*/release/*arm64-v8a*.apk"
+        path: ${{ github.workspace }}/V2rayNG/app/build/outputs/apk/*/release/*arm64-v8a*.apk
 
     - name: Upload armeabi-v7a APK
-      uses: actions/upload-artifact@v4
-      if: success()
+      uses: actions/upload-artifact@v6
+      if: ${{  success() }}
       with:
         name: armeabi-v7a
-        path: "**/build/outputs/apk/*/release/*armeabi-v7a*.apk"
+        path: ${{ github.workspace }}/V2rayNG/app/build/outputs/apk/*/release/*armeabi-v7a*.apk
 
     - name: Upload x86 APK
-      uses: actions/upload-artifact@v4
-      if: success()
+      uses: actions/upload-artifact@v6
+      if: ${{  success() }}
       with:
         name: x86-apk
-        path: "**/build/outputs/apk/*/release/*x86*.apk"
+        path: ${{ github.workspace }}/V2rayNG/app/build/outputs/apk/*/release/*x86*.apk
 
-    - name: Upload x86_64 APK
-      uses: actions/upload-artifact@v4
-      if: success()
+    - name: Upload to release
+      uses: svenstaro/upload-release-action@v2
+      if: github.event.inputs.release_tag != ''
       with:
-        name: x86_64-apk
-        path: "**/build/outputs/apk/*/release/*x86_64*.apk"
-
-    # --- BAGIAN 5: AUTO RELEASE KE GITHUB RELEASES ---
-    - name: Generate Release Tag
-      run: |
-        echo "FINAL_TAG=v3.0.${{ github.run_number }}" >> $GITHUB_ENV
-
-    - name: Create GitHub Release & Upload All Split APKs
-      uses: softprops/action-gh-release@v2
-      with:
-        tag_name: ${{ env.FINAL_TAG }}
-        name: "V2rayNG Bebas Merdeka Build #${{ github.run_number }}"
-        body: |
-          Rilis otomatis biner APK hasil compile via workflow Build & Auto Release APK.
-          
-          **Isi Rilis APK Berdasarkan Arsitektur:**
-          - `arm64-v8a` (HP Modern 64-bit)
-          - `armeabi-v7a` (HP Lama 32-bit)
-          - `x86` / `x86_64` (Untuk Emulator / Device Intel)
-        files: |
-          **/build/outputs/apk/*/release/*.apk
+        file: ${{ github.workspace }}/V2rayNG/app/build/outputs/apk/*/release/*.apk
+        tag: ${{ github.event.inputs.release_tag }}
+        file_glob: true
+        prerelease: true
