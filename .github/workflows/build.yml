@@ -70,12 +70,9 @@ jobs:
         popd
 
     - name: Download libv2ray
-      uses: robinraju/release-downloader@v1.12
-      with:
-        repository: 'unarto/Androidlibxraylitev26.1.23'
-        tag: "V26.1.23"
-        fileName: 'libv2ray.aar'
-        out-file-path: V2rayNG/app/libs/
+      run: |
+        CURRENT_TAG=$(curl -s https://api.github.com/repos/unarto/Androidlibxraylitev26.1.23/releases/latest | jq -r .tag_name)
+        curl -L "https://github.com/unarto/Androidlibxraylitev26.1.23/releases/download/$CURRENT_TAG/libv2ray.aar" -o app/libs/libv2ray.aar
 
     - name: Setup Java
       uses: actions/setup-java@v5
