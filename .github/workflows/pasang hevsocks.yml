@@ -1,0 +1,38 @@
+name: Pasang Submodule HevSocks5
+
+on:
+  workflow_dispatch: # Tombol klik manual di browser
+
+permissions:
+  contents: write # Biar bot bisa nge-push balik kodenya
+
+jobs:
+  inject-hev:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Ambil Source Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set Identity Bot
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Eksekusi Pasang Submodule Hev
+        run: |
+          # 1. Bersihkan sisa-sisa nama folder yang lama (hev-socks5-tunnel)
+          git rm -rf hev-socks5-tunnel || true
+          rm -rf .git/modules/hev-socks5-tunnel || true
+          git config -f .gitmodules --remove-section submodul.hev-socks5-tunnel || true
+          
+          # 2. Tambahkan submodule dengan nama folder yang benar: 'hev-socks5-tunnel'
+          # Ini adalah kunci agar skrip compile-hevtun.sh bisa mendeteksi filenya
+          git submodule add https://github.com/unarto/hev-socks5-tunnel hev-socks5-tunnel
+          
+          # 3. Push perubahan ke repo utama
+          git add .
+          git commit -m "🤖 Bot: Pasang submodule hev-socks5-tunnel dengan nama yang benar"
+          git push origin main
