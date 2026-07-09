@@ -66,4 +66,96 @@ jobs:
         path: ${{ github.workspace }}/v2ray_aar_bin
         key: libv2ray-${{ runner.os }}-${{ hashFiles('Androidlibxraylitev26.1.23/go.mod') }}-${{ hashFiles('Androidlibxraylitev26.1.23/gen_assets.sh') }}
 
-    - name: Build libv
+    - name: Build libv2ray.aar (Local Repo)
+      if: steps.cache-libv2ray-restore.outputs.cache-hit != 'true'
+      run: |
+        gomobile init
+        cd Androidlibxraylitev26.1.23
+        mkdir -p assets data
+        bash gen_assets.sh download
+        cp -v data/*.dat assets/
+        go mod tidy
+        mkdir -p ../v2ray_aar_bin
+        gomobile bind -v -androidapi 24 -trimpath -ldflags='-s -w -buildid=' -o ../v2ray_aar_bin/libv2ray.aar ./
+
+    - name: Save libv2ray
+      if: steps.cache-libv2ray-restore.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: ${{ github.workspace }}/v2ray_aar_bin
+        key: libv2ray-${{ runner.os }}-${{ hashFiles('Androidlibxraylitev26.1.23/go.mod') }}-${{ hashFiles('Androidlibxraylitev26.1.23/gen_assets.sh') }}
+
+    - name: Copy libv2ray to V2rayNG
+      run: |
+        mkdir -p ${{ github.workspace }}/V2rayNG/app/libs/
+        cp ${{ github.workspace }}/v2ray_aar_bin/libv2ray.aar ${{ github.workspace }}/V2rayNG/app/libs/
+
+    # --- BAGIAN 2: CACHE & COMPILE LIBHEVTUN ---
+    - name: Restore cached libhevtun
+      id: cache-libhevtun-restore
+      uses: actions/cache/restore@v4
+      with:
+        path: ${{ github.workspace }}/libs
+        key: libhevtun-${{ runner.os }}-${{ env.NDK_HOME }}-${{ hashFiles('.git/modules/hev-socks5-tunnel/HEAD') }}-${{ hashFiles('compile-hevtun.sh') }}
+
+    - name: Build libhevtun
+      if: steps.cache-libhevtun-restore.outputs.cache-hit != 'true'
+      run: |
+        bash compile-hevtun.sh
+    
+    - name: Save libhevtun
+      if: steps.cache-libhevtun-restore.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: ${{ github.workspace }}/libs
+        key: libhevtun-${{ runner.os }}-${{ env.NDK_HOME }}-${{ hashFiles('.git/modules/hev-socks5-tunnel/HEAD') }}-${{ hashFiles('compile-hevtun.sh') }}
+
+    - name: Compress libhevtun to ZIP
+      run: |
+        zip -r hev-socks5-tunnel-libs.zip libs
+
+    - name: Copy libhevtun to V2rayNG
+      run: |
+        cp -r ${{ github.workspace }}/libs ${{ github.workspace }}/V2rayNG/app
+
+    # --- BAGIAN 3: BUILD APK ---
+    - name: Decode Keystore
+      uses: timheuer/base64-to-file@v1.2.4
+      id: android_keystore
+      with:
+        fileName: "android_keystore.jks"
+        encodedString: ${{ secrets.APP_KEYSTORE_BASE64 }}
+
+    - name: Build APK
+      run: |
+        cd ${{ github.workspace }}/V2rayNG
+        echo "sdk.dir=${ANDROID_HOME}" > local.properties
+        chmod 755 gradlew
+        ./gradlew licenseFdroidReleaseReport
+        # Perubahan ada di penambahan '-x lint' berikut ini:
+        ./gradlew assembleRelease -x lint -Pandroid.injected.signing.store.file=${{ steps.android_keystore.outputs.filePath }} -Pandroid.injected.signing.store.password=${{ secrets.APP_KEYSTORE_PASSWORD }} -Pandroid.injected.signing.key.alias=${{ secrets.APP_KEYSTORE_ALIAS }} -Pandroid.injected.signing.key.password=${{ secrets.APP_KEY_PASSWORD }}
+
+    # --- BAGIAN 4: AUTO RELEASE ---
+    - name: Generate Release Tag
+      run: |
+        if [ -z "${{ github.event.inputs.release_tag }}" ]; then
+          TAG="v2.0.${{ github.run_number }}"
+        else
+          TAG="${{ github.event.inputs.release_tag }}"
+        fi
+        echo "FINAL_TAG=$TAG" >> $GITHUB_ENV
+
+    - name: Create GitHub Release & Upload All Assets
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: ${{ env.FINAL_TAG }}
+        name: "V2rayNG Custom Build ${{ env.FINAL_TAG }}"
+        body: |
+          Rilis otomatis aplikasi V2rayNG beserta binary pendukungnya (Full Cached Build).
+          
+          **Isi Rilis:**
+          - File `.apk` (Semua arsitektur)
+          - `hev-socks5-tunnel-libs.zip` (Berisi compiled jniLibs hasil script lokal)
+        files: |
+          ${{ github.workspace }}/V2rayNG/app/build/outputs/apk/*/release/*.apk
+          hev-socks5-tunnel-libs.zip
