@@ -61,10 +61,21 @@ jobs:
       run: |
         cp -r ${{ github.workspace }}/libs ${{ github.workspace }}/V2rayNG/app
 
-    - name: Download libv2ray (Metode Download Langsung)
+    - name: Fetch AndroidLibXrayLite tag
       run: |
-        mkdir -p ${{ github.workspace }}/V2rayNG/app/libs/
-        curl -L "https://github.com/unarto/Androidlibxraylitev26.1.23/releases/download/V26.1.23/libv2ray.aar" -o ${{ github.workspace }}/V2rayNG/app/libs/libv2ray.aar
+        pushd AndroidLibXrayLite
+        CURRENT_TAG=$(git describe --tags --abbrev=0)
+        echo "Current tag in this repo: $CURRENT_TAG"
+        echo "CURRENT_TAG=$CURRENT_TAG" >> $GITHUB_ENV
+        popd
+
+    - name: Download libv2ray
+      uses: robinraju/release-downloader@v1.12
+      with:
+        repository: '2dust/AndroidLibXrayLite'
+        tag: "v26.1.23" #
+        fileName: 'libv2ray.aar'
+        out-file-path: V2rayNG/app/libs/
 
     - name: Setup Java
       uses: actions/setup-java@v5
