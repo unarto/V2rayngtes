@@ -72,8 +72,8 @@ jobs:
     - name: Download libv2ray
       uses: robinraju/release-downloader@v1.12
       with:
-        repository: '2dust/AndroidLibXrayLite'
-        tag: "v26.1.23" #
+        repository: 'unarto/Androidlibxraylitev26.1.23'
+        tag: "V26.1.23"
         fileName: 'libv2ray.aar'
         out-file-path: V2rayNG/app/libs/
 
