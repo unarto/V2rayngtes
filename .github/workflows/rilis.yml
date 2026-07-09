@@ -132,10 +132,38 @@ jobs:
         echo "sdk.dir=${ANDROID_HOME}" > local.properties
         chmod 755 gradlew
         ./gradlew licenseFdroidReleaseReport
-        # Perubahan ada di penambahan '-x lint' berikut ini:
         ./gradlew assembleRelease -x lint -Pandroid.injected.signing.store.file=${{ steps.android_keystore.outputs.filePath }} -Pandroid.injected.signing.store.password=${{ secrets.APP_KEYSTORE_PASSWORD }} -Pandroid.injected.signing.key.alias=${{ secrets.APP_KEYSTORE_ALIAS }} -Pandroid.injected.signing.key.password=${{ secrets.APP_KEY_PASSWORD }}
 
-    # --- BAGIAN 4: AUTO RELEASE ---
+    # --- BAGIAN 4: UPLOAD ARTIFACTS PER ARSITEKTUR ---
+    - name: Upload arm64-v8a APK
+      uses: actions/upload-artifact@v6
+      if: ${{ success() }}
+      with:
+        name: arm64-v8a
+        path: ${{ github.workspace }}/V2rayNG/app/build/outputs/apk/*/release/*arm64-v8a*.apk
+
+    - name: Upload armeabi-v7a APK
+      uses: actions/upload-artifact@v6
+      if: ${{ success() }}
+      with:
+        name: armeabi-v7a
+        path: ${{ github.workspace }}/V2rayNG/app/build/outputs/apk/*/release/*armeabi-v7a*.apk
+
+    - name: Upload x86 APK
+      uses: actions/upload-artifact@v6
+      if: ${{ success() }}
+      with:
+        name: x86
+        path: ${{ github.workspace }}/V2rayNG/app/build/outputs/apk/*/release/*x86*.apk
+
+    - name: Upload x86_64 APK
+      uses: actions/upload-artifact@v6
+      if: ${{ success() }}
+      with:
+        name: x86_64
+        path: ${{ github.workspace }}/V2rayNG/app/build/outputs/apk/*/release/*x86_64*.apk
+
+    # --- BAGIAN 5: AUTO RELEASE TO GITHUB ---
     - name: Generate Release Tag
       run: |
         if [ -z "${{ github.event.inputs.release_tag }}" ]; then
@@ -151,11 +179,13 @@ jobs:
         tag_name: ${{ env.FINAL_TAG }}
         name: "V2rayNG Custom Build ${{ env.FINAL_TAG }}"
         body: |
-          Rilis otomatis aplikasi V2rayNG beserta binary pendukungnya (Full Cached Build).
+          Rilis otomatis aplikasi V2rayNG beserta binary pendukungnya (Full Split & Cached Build).
           
-          **Isi Rilis:**
-          - File `.apk` (Semua arsitektur)
-          - `hev-socks5-tunnel-libs.zip` (Berisi compiled jniLibs hasil script lokal)
+          **Isi Rilis APK Berdasarkan Arsitektur:**
+          - `arm64-v8a` (HP Android modern 64-bit)
+          - `armeabi-v7a` (HP Android lama 32-bit)
+          - `x86` / `x86_64` (Untuk emulator / device Intel)
+          - `hev-socks5-tunnel-libs.zip` (Backup binary jniLibs)
         files: |
           ${{ github.workspace }}/V2rayNG/app/build/outputs/apk/*/release/*.apk
           hev-socks5-tunnel-libs.zip
