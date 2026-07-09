@@ -4,3 +4,6 @@
 [submodule "hev-socks5-tunnel"]
 	path = hev-socks5-tunnel
 	url = https://github.com/unarto/hev-socks5-tunnel
+[submodule "Androidlibxraylitev26.1.23"]
+	path = Androidlibxraylitev26.1.23
+	url = https://github.com/unarto/AndroidLibXrayLitev26.1.23
