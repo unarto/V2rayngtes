@@ -1,45 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- KUNCI AKSEN (Biru Terang Nyala agar Kontras di Latar Gelap) -->
     <color name="colorPing">#64B5F6</color> 
     <color name="colorPingRed">#FF8A80</color> 
-    <color name="colorConfigType">#64B5F6</color> <!-- Tulisan VLESS / TROJAN jadi biru neon cerah -->
-    <color name="colorWhite">#FFFFFF</color>
-    <color name="color_fab_active">#1E88E5</color> <!-- Tombol kotak kanan bawah mengikuti biru di gambar 1000025669.jpg -->
-    <color name="color_fab_inactive">#424242</color>
-    <color name="divider_color_light">#1F2937</color> <!-- Garis pembatas tipis gelap -->
-    <color name="colorIndicator">@color/md_theme_primary</color>
+    <color name="colorConfigType">#64B5F6</color> <color name="colorWhite">#FFFFFF</color>
+    <color name="color_fab_active">#1E88E5</color> <color name="color_fab_inactive">#424242</color>
+    <color name="divider_color_light">#1F2937</color> <color name="colorIndicator">#64B5F6</color>
 
-    <!-- Primary colors -->
     <color name="md_theme_primary">#64B5F6</color>
     <color name="md_theme_onPrimary">#000000</color>
     <color name="md_theme_primaryContainer">#0D47A1</color>
     <color name="md_theme_onPrimaryContainer">#E3F2FD</color>
 
-    <!-- Secondary colors -->
     <color name="md_theme_secondary">#42A5F5</color>
     <color name="md_theme_onSecondary">#FFFFFF</color>
     <color name="md_theme_secondaryContainer">#1565C0</color>
     <color name="md_theme_onSecondaryContainer">#E8F0FE</color>
 
-    <!-- Background & Gradient Base (Hitam Pekat ke Biru Navy) -->
-    <!-- Jika background menggunakan sistem tint/color, gunakan ini -->
     <color name="md_theme_background">#000000</color> 
-    <color name="md_theme_onBackground">#F3F4F6</color> <!-- Teks utama (Config, Nama VLESS) jadi putih bersih -->
-
-    <!-- Surface colors (Bagian bawah yang bergradasi akan menyatu dengan ini) -->
-    <color name="md_theme_surface">#0B132B</color> <!-- Biru Dongker / Navy super gelap agar gradasi bawah tetap indah -->
-    <color name="md_theme_onSurface">#F3F4F6</color>
+    <color name="md_theme_onBackground">#F3F4F6</color> <color name="md_theme_surface">#0B132B</color> <color name="md_theme_onSurface">#F3F4F6</color>
     <color name="md_theme_surfaceVariant">#1C2541</color>
-    <color name="md_theme_onSurfaceVariant">#9CA3AF</color> <!-- Teks sekunder (host/port) jadi abu terang -->
-    
-    <!-- Outline & Inverse -->
-    <color name="md_theme_outline">#4B5563</color>
+    <color name="md_theme_onSurfaceVariant">#9CA3AF</color> <color name="md_theme_outline">#4B5563</color>
     <color name="md_theme_outlineVariant">#374151</color>
     <color name="md_theme_inverseSurface">#E5E7EB</color>
     <color name="md_theme_inverseOnSurface">#111827</color>
 
-    <!-- Other colors -->
     <color name="md_theme_inversePrimary">#1E88E5</color>
     <color name="md_theme_shadow">#000000</color>
     <color name="md_theme_surfaceTint">#64B5F6</color>
