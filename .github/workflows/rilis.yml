@@ -132,8 +132,20 @@ jobs:
         echo "sdk.dir=${ANDROID_HOME}" > local.properties
         chmod 755 gradlew
         ./gradlew licenseFdroidReleaseReport
-        # Men-skip semua varian lint dan lintVital agar bebas error ambiguous
-        ./gradlew assembleRelease -x lint -x lintVitalFdroidRelease -x lintVitalPlaystoreRelease -x lintVitalAnalyzeFdroidRelease -x lintVitalAnalyzePlaystoreRelease -x lintVitalReportFdroidRelease -x lintVitalReportPlaystoreRelease -Pandroid.injected.signing.store.file=${{ steps.android_keystore.outputs.filePath }} -Pandroid.injected.signing.store.password=${{ secrets.APP_KEYSTORE_PASSWORD }} -Pandroid.injected.signing.key.alias=${{ secrets.APP_KEYSTORE_ALIAS }} -Pandroid.injected.signing.key.password=${{ secrets.APP_KEY_PASSWORD }}
+        # Build tanpa lint sama sekali
+        ./gradlew assembleRelease \
+          -x lint \
+          -x lintVital \
+          -x lintVitalFdroidRelease \
+          -x lintVitalPlaystoreRelease \
+          -x lintVitalAnalyzeFdroidRelease \
+          -x lintVitalAnalyzePlaystoreRelease \
+          -x lintVitalReportFdroidRelease \
+          -x lintVitalReportPlaystoreRelease \
+          -Pandroid.injected.signing.store.file=${{ steps.android_keystore.outputs.filePath }} \
+          -Pandroid.injected.signing.store.password=${{ secrets.APP_KEYSTORE_PASSWORD }} \
+          -Pandroid.injected.signing.key.alias=${{ secrets.APP_KEYSTORE_ALIAS }} \
+          -Pandroid.injected.signing.key.password=${{ secrets.APP_KEY_PASSWORD }}
 
     # --- BAGIAN 4: UPLOAD ARTIFACTS PER ARSITEKTUR ---
     - name: Upload arm64-v8a APK
