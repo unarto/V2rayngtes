@@ -35,4 +35,4 @@ jobs:
           # 3. Push perubahan ke repo utama
           git add .
           git commit -m "🤖 Bot: Pasang submodule hev-socks5-tunnel dengan nama yang benar"
-          git push origin main
+          git push origin master
