@@ -1,0 +1,36 @@
+name: Pasang Submodule AndroidLibXrayLite
+
+on:
+  workflow_dispatch: # Tombol klik manual di browser
+
+permissions:
+  contents: write # Biar bot bisa nge-push balik kodenya
+
+jobs:
+  inject-androidlibxraylite:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Ambil Source Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set Identity Bot
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Eksekusi Pasang Submodule AndroidLibXrayLite
+        run: |
+          # Bersihin sisa lama kalau pernah ada biar gak bentrok
+          git rm -f androidlibxraylite || true
+          rm -rf .git/modules/androidlibxraylite || true
+          
+          # Tembak langsung ke repo AndroidLibXrayLite milik lu
+          git submodule add https://github.com/unarto/AndroidLibXrayLite androidlibxraylite
+          
+          # Push perubahan ke repo utama
+          git add .
+          git commit -m "🤖 Bot: Sukses pasang submodule androidlibxraylite secara otomatis"
+          git push origin main
