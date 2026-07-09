@@ -28,7 +28,7 @@ jobs:
           rm -rf .git/modules/androidlibxraylite || true
           
           # Tembak langsung ke repo AndroidLibXrayLite milik lu
-          git submodule add https://github.com/unarto/AndroidLibXrayLite androidlibxraylite
+          git submodule add Androidlibxraylitev26.1.23 Androidlibxraylitev26.1.23
           
           # Push perubahan ke repo utama
           git add .
