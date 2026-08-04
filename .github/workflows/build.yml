@@ -18,11 +18,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+
     - name: Checkout code
       uses: actions/checkout@v6
       with:
         submodules: 'recursive'
         fetch-depth: '0'
+
 
     - name: Setup Java
       uses: actions/setup-java@v5
@@ -30,12 +32,14 @@ jobs:
         distribution: 'temurin'
         java-version: '21'
 
+
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3.2.0
       with:
         log-accepted-android-sdk-licenses: false
         cmdline-tools-version: '13114758'
         packages: 'platforms;android-36.1 build-tools;36.1.0 platform-tools'
+
 
     - name: Install NDK
       run: |
@@ -50,62 +54,37 @@ jobs:
             ndkVersion = "28.2.13676358"' \
           "${{ github.workspace }}/V2rayNG/app/build.gradle.kts"
 
-      - name: Prepare Xray-core v26.1.23 Libraries
-        run: |
-          set -e
 
-          MAIN_DIR=$(find . -not -path '*/.*' -type d -path "*/app/src/main" | head -n 1)
+    # --- BAGIAN 1: XRAY CORE AAR ---
+    - name: Prepare Xray-core v26.1.23 AAR
+      run: |
+        set -e
 
-          if [ -z "$MAIN_DIR" ]; then
-            echo "Folder app/src/main tidak ditemukan!"
-            exit 1
-          fi
+        APP_DIR="${{ github.workspace }}/V2rayNG/app"
 
-          echo "Folder utama ditemukan di: $MAIN_DIR"
+        mkdir -p "$APP_DIR/libs"
+        mkdir -p "$APP_DIR/src/main/assets"
 
-          mkdir -p "$MAIN_DIR/jniLibs/arm64-v8a"
-          mkdir -p "$MAIN_DIR/jniLibs/x86_64"
+        VERSION_TAG="26.1.23"
 
-          VERSION_TAG="26.1.23"
+        echo "Downloading libv2ray.aar v${VERSION_TAG}"
 
-          echo "Downloading Xray-core v${VERSION_TAG} arm64-v8a..."
-
-          wget -nv \
-            "https://github.com/XTLS/Xray-core/releases/download/v${VERSION_TAG}/Xray-android-arm64-v8a.zip"
-
-          unzip -q Xray-android-arm64-v8a.zip -d arm64_temp
-
-          chmod +x arm64_temp/xray
-
-          mv arm64_temp/xray \
-            "$MAIN_DIR/jniLibs/arm64-v8a/libxray.so"
+        wget -nv \
+          "https://github.com/unarto/Androidlibxraylitev26.1.23/releases/download/V26.1.23/libv2ray.aar" \
+          -O "$APP_DIR/libs/libv2ray.aar"
 
 
-          echo "Downloading Xray-core v${VERSION_TAG} amd64..."
-
-          wget -nv \
-            "https://github.com/XTLS/Xray-core/releases/download/v${VERSION_TAG}/Xray-android-amd64.zip"
-
-          unzip -q Xray-android-amd64.zip -d amd64_temp
-
-          chmod +x amd64_temp/xray
-
-          mv amd64_temp/xray \
-            "$MAIN_DIR/jniLibs/x86_64/libxray.so"
+        echo "=== libv2ray.aar ==="
+        ls -lh "$APP_DIR/libs/libv2ray.aar"
 
 
-          rm -rf \
-            Xray-android-arm64-v8a.zip \
-            Xray-android-amd64.zip \
-            arm64_temp \
-            amd64_temp
+        echo "=== Check geoip/geosite ==="
+
+        unzip -l "$APP_DIR/libs/libv2ray.aar" | grep -E "geoip|geosite" || true
 
 
-          echo "=== Xray libraries ==="
-          ls -lh "$MAIN_DIR/jniLibs/arm64-v8a/"
-          ls -lh "$MAIN_DIR/jniLibs/x86_64/"
+        echo "[✓] Xray-core v${VERSION_TAG} AAR siap"
 
-          echo "[✓] Xray-core v${VERSION_TAG} berhasil dipasang."
 
     # --- BAGIAN 2: CACHE & COMPILE LIBHEVTUN ---
     - name: Restore cached libhevtun
@@ -115,11 +94,13 @@ jobs:
         path: ${{ github.workspace }}/libs
         key: libhevtun-${{ runner.os }}-${{ env.NDK_HOME }}-${{ hashFiles('.git/modules/hev-socks5-tunnel/HEAD') }}-${{ hashFiles('compile-hevtun.sh') }}
 
+
     - name: Build libhevtun
       if: steps.cache-libhevtun-restore.outputs.cache-hit != 'true'
       run: |
         bash compile-hevtun.sh
-    
+
+
     - name: Save libhevtun
       if: steps.cache-libhevtun-restore.outputs.cache-hit != 'true'
       uses: actions/cache/save@v4
@@ -127,13 +108,17 @@ jobs:
         path: ${{ github.workspace }}/libs
         key: libhevtun-${{ runner.os }}-${{ env.NDK_HOME }}-${{ hashFiles('.git/modules/hev-socks5-tunnel/HEAD') }}-${{ hashFiles('compile-hevtun.sh') }}
 
+
     - name: Compress libhevtun to ZIP
       run: |
         zip -r hev-socks5-tunnel-libs.zip libs
 
+
     - name: Copy libhevtun to V2rayNG
       run: |
         cp -r ${{ github.workspace }}/libs ${{ github.workspace }}/V2rayNG/app
+
+
 
     # --- BAGIAN 3: BUILD APK ---
     - name: Decode Keystore
@@ -143,49 +128,61 @@ jobs:
         fileName: "android_keystore.jks"
         encodedString: ${{ secrets.APP_KEYSTORE_BASE64 }}
 
+
     - name: Build APK
       run: |
         cd ${{ github.workspace }}/V2rayNG
+
         echo "sdk.dir=${ANDROID_HOME}" > local.properties
+
         chmod 755 gradlew
+
         ./gradlew licenseFdroidReleaseReport
-        # Lint aktif kembali (tanpa -x lint)
+
         ./gradlew assembleRelease \
           -Pandroid.injected.signing.store.file=${{ steps.android_keystore.outputs.filePath }} \
           -Pandroid.injected.signing.store.password=${{ secrets.APP_KEYSTORE_PASSWORD }} \
+          -Pandroid.injected.signing.store.type=jks \
           -Pandroid.injected.signing.key.alias=${{ secrets.APP_KEYSTORE_ALIAS }} \
           -Pandroid.injected.signing.key.password=${{ secrets.APP_KEY_PASSWORD }}
 
-    # --- BAGIAN 4: UPLOAD ARTIFACTS PER ARSITEKTUR ---
+
+
+    # --- BAGIAN 4: UPLOAD APK ---
     - name: Upload arm64-v8a APK
       uses: actions/upload-artifact@v6
-      if: ${{ success() }}
+      if: success()
       with:
         name: arm64-v8a
-        path: ${{ github.workspace }}/V2rayNG/app/build/outputs/apk/*/release/*arm64-v8a*.apk
+        path: V2rayNG/app/build/outputs/apk/*/release/*arm64-v8a*.apk
+
 
     - name: Upload armeabi-v7a APK
       uses: actions/upload-artifact@v6
-      if: ${{ success() }}
+      if: success()
       with:
         name: armeabi-v7a
-        path: ${{ github.workspace }}/V2rayNG/app/build/outputs/apk/*/release/*armeabi-v7a*.apk
+        path: V2rayNG/app/build/outputs/apk/*/release/*armeabi-v7a*.apk
+
 
     - name: Upload x86 APK
       uses: actions/upload-artifact@v6
-      if: ${{ success() }}
+      if: success()
       with:
         name: x86
-        path: ${{ github.workspace }}/V2rayNG/app/build/outputs/apk/*/release/*x86*.apk
+        path: V2rayNG/app/build/outputs/apk/*/release/*x86*.apk
+
 
     - name: Upload x86_64 APK
       uses: actions/upload-artifact@v6
-      if: ${{ success() }}
+      if: success()
       with:
         name: x86_64
-        path: ${{ github.workspace }}/V2rayNG/app/build/outputs/apk/*/release/*x86_64*.apk
+        path: V2rayNG/app/build/outputs/apk/*/release/*x86_64*.apk
 
-    # --- BAGIAN 5: AUTO RELEASE TO GITHUB ---
+
+
+    # --- BAGIAN 5: RELEASE ---
     - name: Generate Release Tag
       run: |
         if [ -z "${{ github.event.inputs.release_tag }}" ]; then
@@ -193,7 +190,9 @@ jobs:
         else
           TAG="${{ github.event.inputs.release_tag }}"
         fi
+
         echo "FINAL_TAG=$TAG" >> $GITHUB_ENV
+
 
     - name: Create GitHub Release & Upload All Assets
       uses: softprops/action-gh-release@v2
@@ -201,13 +200,20 @@ jobs:
         tag_name: ${{ env.FINAL_TAG }}
         name: "V2rayNG Custom Build ${{ env.FINAL_TAG }}"
         body: |
-          Rilis otomatis aplikasi V2rayNG beserta binary pendukungnya (Full Split & Cached Build).
+          V2rayNG Custom Build
           
-          **Isi Rilis APK Berdasarkan Arsitektur:**
-          - `arm64-v8a` (HP Android modern 64-bit)
-          - `armeabi-v7a` (HP Android lama 32-bit)
-          - `x86` / `x86_64` (Untuk emulator / device Intel)
-          - `hev-socks5-tunnel-libs.zip` (Backup binary jniLibs)
+          Xray-core:
+          - libv2ray.aar v26.1.23
+
+          HEV:
+          - hev-socks5-tunnel
+
+          APK:
+          - arm64-v8a
+          - armeabi-v7a
+          - x86
+          - x86_64
+
         files: |
-          ${{ github.workspace }}/V2rayNG/app/build/outputs/apk/*/release/*.apk
+          V2rayNG/app/build/outputs/apk/*/release/*.apk
           hev-socks5-tunnel-libs.zip
