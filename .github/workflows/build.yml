@@ -50,50 +50,62 @@ jobs:
             ndkVersion = "28.2.13676358"' \
           "${{ github.workspace }}/V2rayNG/app/build.gradle.kts"
 
-- name: Prepare Xray-core v26.1.23 Libraries
-  run: |
-    set -e
+      - name: Prepare Xray-core v26.1.23 Libraries
+        run: |
+          set -e
 
-    MAIN_DIR=$(find . -not -path '*/.*' -type d -path "*/app/src/main" | head -n 1)
+          MAIN_DIR=$(find . -not -path '*/.*' -type d -path "*/app/src/main" | head -n 1)
 
-    if [ -z "$MAIN_DIR" ]; then
-      echo "app/src/main tidak ditemukan!"
-      exit 1
-    fi
+          if [ -z "$MAIN_DIR" ]; then
+            echo "Folder app/src/main tidak ditemukan!"
+            exit 1
+          fi
 
-    echo "Folder utama ditemukan di: $MAIN_DIR"
+          echo "Folder utama ditemukan di: $MAIN_DIR"
 
-    mkdir -p "$MAIN_DIR/jniLibs/arm64-v8a"
-    mkdir -p "$MAIN_DIR/jniLibs/x86_64"
+          mkdir -p "$MAIN_DIR/jniLibs/arm64-v8a"
+          mkdir -p "$MAIN_DIR/jniLibs/x86_64"
 
-    VERSION_TAG="26.1.23"
+          VERSION_TAG="26.1.23"
 
-    echo "Downloading arm64-v8a..."
-    wget -nv \
-      "https://github.com/XTLS/Xray-core/releases/download/v${VERSION_TAG}/Xray-android-arm64-v8a.zip"
+          echo "Downloading Xray-core v${VERSION_TAG} arm64-v8a..."
 
-    unzip -q Xray-android-arm64-v8a.zip -d arm64_temp
-    chmod +x arm64_temp/xray
-    mv arm64_temp/xray "$MAIN_DIR/jniLibs/arm64-v8a/libxray.so"
+          wget -nv \
+            "https://github.com/XTLS/Xray-core/releases/download/v${VERSION_TAG}/Xray-android-arm64-v8a.zip"
 
-    echo "Downloading x86_64..."
-    wget -nv \
-      "https://github.com/XTLS/Xray-core/releases/download/v${VERSION_TAG}/Xray-android-amd64.zip"
+          unzip -q Xray-android-arm64-v8a.zip -d arm64_temp
 
-    unzip -q Xray-android-amd64.zip -d x86_64_temp
-    chmod +x x86_64_temp/xray
-    mv x86_64_temp/xray "$MAIN_DIR/jniLibs/x86_64/libxray.so"
+          chmod +x arm64_temp/xray
 
-    rm -rf \
-      Xray-android-arm64-v8a.zip \
-      Xray-android-amd64.zip \
-      arm64_temp \
-      x86_64_temp
+          mv arm64_temp/xray \
+            "$MAIN_DIR/jniLibs/arm64-v8a/libxray.so"
 
-    ls -lh "$MAIN_DIR/jniLibs/arm64-v8a/"
-    ls -lh "$MAIN_DIR/jniLibs/x86_64/"
 
-    echo "Xray Core v${VERSION_TAG} berhasil dipasang."
+          echo "Downloading Xray-core v${VERSION_TAG} amd64..."
+
+          wget -nv \
+            "https://github.com/XTLS/Xray-core/releases/download/v${VERSION_TAG}/Xray-android-amd64.zip"
+
+          unzip -q Xray-android-amd64.zip -d amd64_temp
+
+          chmod +x amd64_temp/xray
+
+          mv amd64_temp/xray \
+            "$MAIN_DIR/jniLibs/x86_64/libxray.so"
+
+
+          rm -rf \
+            Xray-android-arm64-v8a.zip \
+            Xray-android-amd64.zip \
+            arm64_temp \
+            amd64_temp
+
+
+          echo "=== Xray libraries ==="
+          ls -lh "$MAIN_DIR/jniLibs/arm64-v8a/"
+          ls -lh "$MAIN_DIR/jniLibs/x86_64/"
+
+          echo "[✓] Xray-core v${VERSION_TAG} berhasil dipasang."
 
     # --- BAGIAN 2: CACHE & COMPILE LIBHEVTUN ---
     - name: Restore cached libhevtun
