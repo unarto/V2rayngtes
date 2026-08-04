@@ -42,38 +42,36 @@ jobs:
         echo "y" | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager \
           --channel=0 \
           --install "ndk;28.2.13676358"
+
         echo "NDK_HOME=$ANDROID_HOME/ndk/28.2.13676358" >> $GITHUB_ENV
         echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/28.2.13676358" >> $GITHUB_ENV
+
         sed -i '10i\
-        \
-            ndkVersion = "28.2.13676358"' ${{ github.workspace }}/V2rayNG/app/build.gradle.kts
+            ndkVersion = "28.2.13676358"' \
+          "${{ github.workspace }}/V2rayNG/app/build.gradle.kts"
 
-      - name: Prepare Xray-core v26.1.23 Libraries
-        run: |
-          # Mengabaikan folder tersembunyi .git agar tidak salah kamar ke submodule cache
-          MAIN_DIR=$(find . -not -path '*/.*' -type d -name "main" | head -n 1)
-          echo "Folder utama ditemukan di: $MAIN_DIR"
-          
-          # Membuat folder jniLibs yang bersih langsung di jalur project yang benar
-          mkdir -p "$MAIN_DIR/jniLibs/arm64-v8a"
-          mkdir -p "$MAIN_DIR/jniLibs/x86_64"
+    - name: Prepare Xray-core v26.1.23 Libraries
+      run: |
+        # Mengabaikan folder tersembunyi .git agar tidak salah kamar ke submodule cache
+        MAIN_DIR=$(find . -not -path '*/.*' -type d -name "main" | head -n 1)
+        echo "Folder utama ditemukan di: $MAIN_DIR"
 
-          # Menggunakan variabel lokal murni untuk menjamin kestabilan unduhan (Bebas Error 404)
-          VERSION_TAG="26.1.23"
+        mkdir -p "$MAIN_DIR/jniLibs/arm64-v8a"
+        mkdir -p "$MAIN_DIR/jniLibs/x86_64"
 
-          # Download dan ekstrak rilis resmi untuk arm64-v8a
-          echo "Downloading Xray-core v$VERSION_TAG for arm64-v8a..."
-          wget -q "https://github.com/XTLS/Xray-core/releases/download/v${VERSION_TAG}/Xray-android-arm64-v8a.zip"
-          unzip -q Xray-android-arm64-v8a.zip -d arm64_temp
-          mv arm64_temp/xray "$MAIN_DIR/jniLibs/arm64-v8a/libxray.so"
-          rm -rf Xray-android-arm64-v8a.zip arm64_temp
+        VERSION_TAG="26.1.23"
 
-          # Download dan ekstrak rilis resmi untuk x86_64
-          echo "Downloading Xray-core v$VERSION_TAG for x86_64..."
-          wget -q "https://github.com/XTLS/Xray-core/releases/download/v${VERSION_TAG}/Xray-android-x86_64.zip"
-          unzip -q Xray-android-x86_64.zip -d x86_64_temp
-          mv x86_64_temp/xray "$MAIN_DIR/jniLibs/x86_64/libxray.so"
-          rm -rf Xray-android-x86_64.zip x86_64_temp
+        echo "Downloading Xray-core v$VERSION_TAG for arm64-v8a..."
+        wget -q "https://github.com/XTLS/Xray-core/releases/download/v${VERSION_TAG}/Xray-android-arm64-v8a.zip"
+        unzip -q Xray-android-arm64-v8a.zip -d arm64_temp
+        mv arm64_temp/xray "$MAIN_DIR/jniLibs/arm64-v8a/libxray.so"
+        rm -rf Xray-android-arm64-v8a.zip arm64_temp
+
+        echo "Downloading Xray-core v$VERSION_TAG for x86_64..."
+        wget -q "https://github.com/XTLS/Xray-core/releases/download/v${VERSION_TAG}/Xray-android-x86_64.zip"
+        unzip -q Xray-android-x86_64.zip -d x86_64_temp
+        mv x86_64_temp/xray "$MAIN_DIR/jniLibs/x86_64/libxray.so"
+        rm -rf Xray-android-x86_64.zip x86_64_temp
 
     # --- BAGIAN 2: CACHE & COMPILE LIBHEVTUN ---
     - name: Restore cached libhevtun
